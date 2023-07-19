@@ -29,6 +29,10 @@ if uploaded_file is not None:
     wkt_column2 = st.selectbox('Select the second WKT column', df.columns)
     id_column = st.selectbox('Select the file id column', df.columns)
 
+    # Determine label based on selected columns
+    label1 = "Zone" if wkt_column1 == 'geometry' else "Field" if wkt_column1 == 'BoundaryWKTs' else 'Polygon 1'
+    label2 = "Zone" if wkt_column2 == 'geometry' else "Field" if wkt_column2 == 'BoundaryWKTs' else 'Polygon 2'
+
     # Sliders to select the start row and the number of rows to process
     start_row = st.slider('Select the start row', min_value=0, max_value=len(df)-1, value=0, step=1)
     num_rows = st.slider('Select the number of rows to process', min_value=1, max_value=min(50, len(df)-start_row), value=5, step=1)
@@ -50,16 +54,6 @@ if uploaded_file is not None:
             except WKTReadingError:
                 st.error('Invalid WKT. Please check your inputs.')
                 st.stop()
-
-            if isinstance(poly1, MultiPolygon):
-                polys1 = [poly for poly in poly1.geoms]
-            else:
-                polys1 = [poly1]
-
-            if isinstance(poly2, MultiPolygon):
-                polys2 = [poly for poly in poly2.geoms]
-            else:
-                polys2 = [poly2]
 
             # Determine UTM Zone
             centroid = polys1[0].centroid  # Use the first polygon to determine UTM zone
