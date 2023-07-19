@@ -1,6 +1,7 @@
 import streamlit as st
 import geopandas as gpd
 import folium
+from streamlit_folium import folium_static
 from shapely import wkt
 from shapely.geometry import Polygon
 from pyproj import CRS
@@ -26,7 +27,7 @@ wkt_input = st.text_area("Enter WKT string:", "")
 if wkt_input:
     try:
         geometry = wkt.loads(wkt_input)
-        gdf = gpd.GeoDataFrame(geometry=[geometry], crs=4326)
+        gdf = gdf = gpd.GeoDataFrame(geometry=[geometry], crs="EPSG:4326")
         
         # Create a map
         m = folium.Map(location=[gdf.geometry.centroid.y.mean(), gdf.geometry.centroid.x.mean()], zoom_start=13)
@@ -34,10 +35,10 @@ if wkt_input:
         # Add polygon(s) to the map
         for _, row in gdf.iterrows():
             folium.GeoJson(row.geometry).add_to(m)
-        
+
         # Display the map
-        st.markdown(m._repr_html_(), unsafe_allow_html=True)
-        
+        folium_static(m)
+
         # Calculate and display statistics
         area, perimeter, count = calculate_statistics(gdf)
         st.write(f"Area: {area} square meters")
