@@ -3,7 +3,7 @@
 import streamlit as st
 import pandas as pd
 import geopandas as gpd
-from shapely import wkt
+from shapely import wkt, geometry
 import pydeck as pdk
 
 def is_valid_wkt(wkt_string):
@@ -32,7 +32,7 @@ def plot_map(gdf):
     )
 
     # Set the viewport to the center of the map
-    view_state = pdk.ViewState(latitude=gdf.geometry.centroid.y.mean(), longitude=gdf.geometry.centroid.x.mean(), zoom=10)
+    view_state = pdk.ViewState(latitude=gdf.centroid.y.mean(), longitude=gdf.centroid.x.mean(), zoom=10)
 
     # Render the map
     st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state))
@@ -56,6 +56,9 @@ if uploaded_file is not None:
 
         # Convert DataFrame to GeoDataFrame
         gdf = gpd.GeoDataFrame(data, geometry=data[column_name])
+
+        # Convert any non-geometry data to None
+        gdf['geometry'] = gdf['geometry'].apply(lambda geom: geom if isinstance(geom, geometry.base.BaseGeometry) else None)
 
         plot_map(gdf)
     else:
