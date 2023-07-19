@@ -36,10 +36,15 @@ st.title('CSV Geo Plotter')
 uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
 if uploaded_file is not None:
     data = pd.read_csv(uploaded_file)
-    column_name = st.selectbox('Select the WKT column', data.columns)
+    string_columns = data.select_dtypes(include=['object']).columns  # only select columns with string data
+    column_name = st.selectbox('Select the WKT column', string_columns)
 
     # Parse WKT strings to geometric objects
-    data[column_name] = data[column_name].apply(wkt.loads)
+    try:
+        data[column_name] = data[column_name].apply(wkt.loads)
+    except Exception as e:
+        st.error(f"Error parsing WKT data: {e}")
+        raise
     
     # Convert DataFrame to GeoDataFrame
     gdf = gpd.GeoDataFrame(data, geometry=data[column_name])
