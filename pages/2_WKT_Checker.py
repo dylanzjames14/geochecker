@@ -1,75 +1,81 @@
 import streamlit as st
+import pandas as pd
 import geopandas as gpd
 import folium
-import os
-from streamlit_folium import folium_static
 from shapely import wkt
-from shapely.geometry import Polygon
-from pyproj import CRS
-from tempfile import NamedTemporaryFile
+from streamlit_folium import folium_static
+from shapely.errors import WKTReadingError
+from shapely.geometry import MultiPolygon
+import pyproj
 
-def calculate_statistics(gdf, area_unit):
-    # Reproject to suitable CRS for distance/area measurements
-    gdf_proj = gdf.to_crs(epsg=3857)
-    
-    # Calculate statistics
-    area = gdf_proj.area.sum()  # in square meters
-    perimeter = gdf_proj.length.sum()  # in meters
-    count = len(gdf)
+# Setup Streamlit layout
+st.set_page_config(page_title="Geomaker", page_icon="🌍", layout="wide")
+st.title('🔎 Compare WKTs')
+st.markdown("""
+    **Instructions:** Upload a CSV file and select the columns that contain the Well-Known Text (WKT) for the polygons you want to compare.
+    Alternatively, you can also input a WKT directly.
+    The polygons and their overlapping areas will be displayed on maps, along with their stats and the corresponding file id for each row.
+""")
 
-    # Convert area to selected unit
-    if area_unit == "hectares":
-        area = area / 10_000
-    elif area_unit == "acres":
-        area = area * 0.000247105
+# File uploader and direct WKT input
+input_option = st.selectbox('Choose an input method', ['Upload CSV', 'Input WKT'])
 
-    return area, perimeter, count
+if input_option == 'Upload CSV':
+    uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
 
-# Create Streamlit interface
-st.title("WKT Viewer")
+    if uploaded_file is not None:
+        # Load the CSV file
+        df = pd.read_csv(uploaded_file)
 
-# Get WKT input
-wkt_input = st.text_area("Enter WKT string:", "")
+        # Selectors for the WKT columns and the file id column
+        column_selection = st.multiselect('Select the WKT column(s)', df.columns)
 
-# Dropdown for area unit
-area_unit = st.selectbox("Select unit for area:", ("square meters", "hectares", "acres"))
+        if len(column_selection) > 0:
+            id_column = st.selectbox('Select the file id column', df.columns)
 
-# Dropdown for file format
-file_format = st.selectbox("Select file format for download:", ("GeoJSON", "KML"))
+            # Sliders to select the start row and the number of rows to process
+            start_row = st.slider('Select the start row', min_value=0, max_value=len(df)-1, value=0, step=1)
+            num_rows = st.slider('Select the number of rows to process', min_value=1, max_value=min(50, len(df)-start_row), value=5, step=1)
 
-# Parse WKT
-if wkt_input:
-    try:
-        geometry = wkt.loads(wkt_input)
-        gdf = gpd.GeoDataFrame(geometry=[geometry], crs="EPSG:4326")
-        
-        # Create a map
-        m = folium.Map(location=[gdf.geometry.centroid.y.mean(), gdf.geometry.centroid.x.mean()], zoom_start=13)
-        
-        # Add polygon(s) to the map
-        for _, row in gdf.iterrows():
-            folium.GeoJson(row.geometry).add_to(m)
+            # Loop through the selected rows
+            for i in range(start_row, start_row + num_rows):
+                # Get the WKT strings and the file id
+                wkts = [df.loc[i, col] for col in column_selection]
+                file_id = df.loc[i, id_column]
 
-        # Display the map
-        folium_static(m)
-        
-        # Calculate and display statistics
-        area, perimeter, count = calculate_statistics(gdf, area_unit)
-        st.write(f"Area: {area} {area_unit}")
-        st.write(f"Perimeter: {perimeter} meters")
-        st.write(f"Number of Polygons: {count}")
+                st.subheader(f'File id: {file_id}')
 
-        # Create temporary file for download
-        tmpfile = NamedTemporaryFile(delete=False)
+                # Function to create and process polygons
+                process_polygons(wkts, column_selection)
 
-        # Export to selected file format
-        if file_format == "GeoJSON":
-            gdf.to_file(tmpfile.name, driver='GeoJSON')
-        else:  # KML
-            gdf.to_file(tmpfile.name, driver='KML')
+elif input_option == 'Input WKT':
+    wkts = [st.text_input('Enter a WKT string')]
 
-        # Create download link
-        st.markdown(f"[Download {file_format} file]({tmpfile.name})")
+    # Button to add another WKT
+    if st.button('Add another WKT'):
+        wkts.append(st.text_input('Enter another WKT string'))
 
-    except Exception as e:
-        st.write(f"Error: {str(e)}")
+    # Function to create and process polygons
+    process_polygons(wkts)
+
+def process_polygons(wkts, column_names=None):
+    polygons = []
+    for i, wkt_string in enumerate(wkts):
+        if wkt_string:
+            try:
+                polygon = wkt.loads(wkt_string)
+                polygons.append(polygon)
+
+                # Function to calculate and display stats
+                display_stats(polygon, i, column_names)
+
+            except WKTReadingError:
+                st.error('Invalid WKT. Please check your inputs.')
+                st.stop()
+
+    # Function to display maps
+    display_maps(polygons)
+
+    if len(polygons) > 1:
+        # Function to compare polygons' stats
+        compare_stats(polygons)
