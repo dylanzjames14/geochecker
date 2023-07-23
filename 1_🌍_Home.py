@@ -5,7 +5,7 @@ from PIL import Image
 st.set_page_config(page_title="Spatial Annihilator", page_icon="🌍", layout="wide")
 
 # Open the image file
-img = Image.open('/data/homeimage.png')
+img = Image.open('Data/homeimage.png')
 
 st.title("Welcome to Spatial Annihilator!")
 st.write("A tool for analyzing common geospatial files and formats!")
