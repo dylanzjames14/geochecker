@@ -15,7 +15,7 @@ st.write('Welcome to WKT Analyzer! A tool for visualizing and dissecting Well-Kn
 
 with st.expander("📝 Instructions"):
     st.markdown("""
-    **Step 1:** Upload a CSV, Excel, or DBF file that contains Well-Known Text (WKT) for polygons.
+    **Step 1:** Upload a CSV or Excel file that contains Well-Known Text (WKT) for polygons.
     
     **Step 2:** Select the columns containing the WKTs and identifiers.
     
@@ -25,7 +25,7 @@ with st.expander("📝 Instructions"):
     """)
 
 # File uploader
-uploaded_file = st.file_uploader("Select a file", type=["csv", "xlsx", "dbf"])
+uploaded_file = st.file_uploader("Select a file", type=["csv", "xlsx"])
 
 if uploaded_file is not None:
     # Load the file
