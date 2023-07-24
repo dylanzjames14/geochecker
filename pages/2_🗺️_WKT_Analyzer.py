@@ -9,7 +9,7 @@ from shapely.geometry import MultiPolygon
 import pyproj
 
 # Setup Streamlit layout
-st.set_page_config(page_title="Geochecker", page_icon="🌍", layout="wide")
+st.set_page_config(page_title="Spatial Annihilator", page_icon="🌍", layout="wide")
 st.title('🗺️ WKT Analyzer')
 st.write('Welcome to WKT Analyzer! A tool for visualizing and dissecting Well-Known Text (WKT). This page simplifies your geospatial analysis by offering an easy upload-and-compare feature for multiple WKTs.')
 
