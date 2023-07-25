@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import geopandas as gpd
-from shapely import wkt
+from shapely import wkt, wkb
 import folium
 from streamlit_folium import folium_static
 from shapely.geometry import Point, Polygon, MultiPolygon
@@ -12,30 +12,34 @@ import zipfile
 import base64
 import shutil
 import simplekml
+import binascii
 
 # Set up Streamlit layout
 st.set_page_config(page_title="Spatial Annihilator", page_icon="🌍", layout="wide")
 st.title('🗺️ Carto Converter')
-st.write('Welcome to Carto Converter! A tool for visualizing and converting geospatial files. This page simplifies your geospatial analysis by offering an easy upload-and-visualize feature for WKT, GeoJSON, KML, and Shapefile formats. Additionally, convert your geospatial files from one common file type to another.')
+st.write('Welcome to Carto Converter! A tool for visualizing and converting geospatial files. This page simplifies your geospatial analysis by offering an easy upload-and-visualize feature for WKT, WKB, GeoJSON, KML, and Shapefile formats. Additionally, convert your geospatial files from one common file type to another.')
 
 with st.expander("📝 Instructions"):
     st.markdown("""
-    **Step 1:** Upload a geospatial file that contains WKT, GeoJSON, KML, or Shapefile format geometries. Alternatively, you can input a WKT string directly.
+    **Step 1:** Upload a geospatial file that contains WKT, WKB, GeoJSON, KML, or Shapefile format geometries. Alternatively, you can input a WKT string or WKB hex string directly.
     
-    **Step 2:** Wait as your file or WKT string is processed and presented on the map.
+    **Step 2:** Wait as your file or WKT/WKB string is processed and presented on the map.
     
     **Step 3:** View the statistics of the geometries, such as total area (for polygons) and count of points or polygons.
     
-    **Step 4:** Choose to export your file to WKT, GeoJSON, KML, or Shapefile format.
+    **Step 4:** Choose to export your file to WKT, WKB, GeoJSON, KML, or Shapefile format.
     """)
 
 # File uploader
-uploaded_file = st.file_uploader("Select a file", type=["geojson", "kml", "shp"])
+uploaded_file = st.file_uploader("Select a file", type=["geojson", "kml", "shp", "wkb"])
 
 # WKT input
 wkt_input = st.text_area("Or input a WKT string")
 
-if uploaded_file is not None or wkt_input:
+# WKB input
+wkb_input = st.text_area("Or input a WKB hex string")
+
+if uploaded_file is not None or wkt_input or wkb_input:
     # Load the file
     if uploaded_file is not None:
         if uploaded_file.type == "application/vnd.ms-excel":
@@ -47,11 +51,18 @@ if uploaded_file is not None or wkt_input:
             gdf = gpd.read_file(uploaded_file, driver='KML')
         elif uploaded_file.type == "application/x-dbf":
             gdf = gpd.read_file(uploaded_file)
+        elif uploaded_file.type == "application/wkb":
+            wkb_bytes = uploaded_file.getvalue()
+            geometry = wkb.loads(wkb_bytes)
+            gdf = gpd.GeoDataFrame(pd.DataFrame([0]), geometry=[geometry], crs="EPSG:4326")
         else:
-            st.error("Invalid file type. Please upload a CSV, GeoJSON, KML, or Shapefile.")
+            st.error("Invalid file type. Please upload a CSV, GeoJSON, KML, WKB, or Shapefile.")
             st.stop()
-    else:
+    elif wkt_input:
         gdf = gpd.GeoSeries([wkt.loads(wkt_input)], crs="EPSG:4326")
+    else:
+        geometry = wkb.loads(binascii.unhexlify(wkb_input))
+        gdf = gpd.GeoDataFrame(pd.DataFrame([0]), geometry=[geometry], crs="EPSG:4326")
 
     # Area units selector
     area_units = st.selectbox("Area units", ["Square Meters", "Square Kilometers", "Square Miles", "Hectares", "Acres"])
@@ -90,13 +101,16 @@ if uploaded_file is not None or wkt_input:
         st.subheader(f"Count of points: {len(gdf)}")
 
     # Export options
-    export_format = st.selectbox("Export format", ["WKT", "GeoJSON", "KML", "Shapefile"])
+    export_format = st.selectbox("Export format", ["WKT", "WKB", "GeoJSON", "KML", "Shapefile"])
     if st.button("Export"):
         # Revert the CRS to WGS 84 before exporting
         gdf_wgs84 = gdf.to_crs(epsg=4326)
         if export_format == "WKT":
             wkt_str = "\n".join(gdf_wgs84.geometry.apply(lambda x: x.wkt))
             st.text(wkt_str)
+        elif export_format == "WKB":
+            wkb_str = gdf_wgs84.geometry.apply(lambda x: wkb.dumps(x)).tolist()[0]
+            st.download_button("Download WKB", wkb_str, "output.wkb")
         elif export_format == "GeoJSON":
             gdf_wgs84.to_file("output.geojson", driver='GeoJSON')
             with open("output.geojson", "rb") as f:
