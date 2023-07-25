@@ -32,9 +32,6 @@ with st.expander("📝 Instructions"):
 # File uploader
 uploaded_file = st.file_uploader("Select a file", type=["geojson", "kml", "shp"])
 
-# Area units selector
-area_units = st.selectbox("Area units", ["Square Meters", "Square Kilometers", "Square Miles", "Hectares", "Acres"])
-
 # WKT input
 wkt_input = st.text_area("Or input a WKT string")
 
@@ -56,6 +53,9 @@ if uploaded_file is not None or wkt_input:
     else:
         gdf = gpd.GeoSeries([wkt.loads(wkt_input)], crs="EPSG:4326")
 
+    # Area units selector
+    area_units = st.selectbox("Area units", ["Square Meters", "Square Kilometers", "Square Miles", "Hectares", "Acres"])
+    
     # Set Projection
     gdf = gdf.to_crs(epsg=32633)  # replace 32633 with the appropriate EPSG code
 
