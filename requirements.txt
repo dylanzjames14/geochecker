@@ -15,5 +15,5 @@ fiona
 shapely
 dask-geopandas
 pyogrio
-
+binascii
 
