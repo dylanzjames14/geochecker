@@ -36,7 +36,10 @@ if uploaded_file is not None:
         df = gpd.read_file(uploaded_file)
     else:  # Assume it's a CSV
         file_str = uploaded_file.read().decode(errors='replace')  # Replace invalid characters
-        df = pd.read_csv(io.StringIO(file_str))  # Convert string back to a file-like object
+        try:
+            df = pd.read_csv(io.StringIO(file_str), quoting=3, error_bad_lines=False)  # Convert string back to a file-like object
+        except pd.errors.ParserError as e:
+            st.error(f'Error parsing the CSV file: {e}')
 
     # Selectors for the WKT columns and the identifier column
     wkt_columns = st.multiselect('Select the WKT columns', df.columns, default=df.columns[:2].tolist())
