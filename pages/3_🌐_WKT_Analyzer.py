@@ -7,6 +7,7 @@ from streamlit_folium import folium_static
 from shapely.errors import WKTReadingError
 from shapely.geometry import MultiPolygon
 import pyproj
+import io
 
 # Setup Streamlit layout
 st.set_page_config(page_title="Spatial Annihilator", page_icon="🌍", layout="wide")
@@ -34,7 +35,8 @@ if uploaded_file is not None:
     elif uploaded_file.type == "application/x-dbf":
         df = gpd.read_file(uploaded_file)
     else:  # Assume it's a CSV
-        df = pd.read_csv(uploaded_file)
+        file_str = uploaded_file.read().decode(errors='replace')  # Replace invalid characters
+        df = pd.read_csv(io.StringIO(file_str))  # Convert string back to a file-like object
 
     # Selectors for the WKT columns and the identifier column
     wkt_columns = st.multiselect('Select the WKT columns', df.columns, default=df.columns[:2].tolist())
