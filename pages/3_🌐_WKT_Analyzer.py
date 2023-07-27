@@ -26,7 +26,7 @@ with st.expander("📝 Instructions"):
     """)
 
 # File uploader
-uploaded_file = st.file_uploader("Select a file", type=["csv", "xlsx"])
+uploaded_file = st.file_uploader("Select a file", type=["csv", "xlsx", "dbf"])
 
 if uploaded_file is not None:
     # Load the file
@@ -35,11 +35,7 @@ if uploaded_file is not None:
     elif uploaded_file.type == "application/x-dbf":
         df = gpd.read_file(uploaded_file)
     else:  # Assume it's a CSV
-        file_str = uploaded_file.read().decode(errors='replace')  # Replace invalid characters
-        try:
-            df = pd.read_csv(io.StringIO(file_str), quoting=3, error_bad_lines=False)  # Convert string back to a file-like object
-        except pd.errors.ParserError as e:
-            st.error(f'Error parsing the CSV file: {e}')
+        df = pd.read_csv(uploaded_file)
 
     # Selectors for the WKT columns and the identifier column
     wkt_columns = st.multiselect('Select the WKT columns', df.columns, default=df.columns[:2].tolist())
